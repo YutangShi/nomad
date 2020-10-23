@@ -5,6 +5,3 @@ type Sink interface {
 	Stop()
 	Subscribe() error
 }
-
-type Manager interface {
-}

@@ -994,17 +994,52 @@ func (s *Server) publishJobStatusMetrics(stopCh chan struct{}) {
 }
 
 func (s *Server) publishEventsForSinks(stopCh chan struct{}) {
-	broker, err := s.State().EventBroker()
-	if err != nil {
-		s.logger.Warn("event broker not enabled on leader", "error", err)
-	}
+	_, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	for {
-		select {
-		case <-stopCh:
-			return
-		}
-	}
+	// cancel context when stopCh is closed
+	go func() {
+		<-stopCh
+		cancel()
+	}()
+
+	// broker, err := s.State().EventBroker()
+	// if err != nil {
+	// 	s.logger.Warn("event broker not enabled on leader", "error", err)
+	// }
+
+	// stateAbandon := s.State().AbandonCh()
+
+	// ws := memdb.NewWatchSet()
+	// ws.Add(stateAbandon)
+
+	// sinkIter, err := s.State().EventSinks(ws)
+	// if err != nil {
+	// 	s.logger.Error("event sink manager errored querying event sinks", "error", err)
+	// }
+
+	// var sinkIDs []string
+	// for {
+	// 	raw := sinkIter.Next()
+	// 	if raw == nil {
+	// 		break
+	// 	}
+	// 	sink := raw.(*structs.EventSink)
+	// 	sinkIDs = append(sinkIDs, sink.ID)
+	// }
+
+	// manager := stream.NewManager(sinkIDs)
+
+	// wsCh := ws.WatchCh(ctx)
+
+	// for {
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		return
+	// 	case err := <-wsCh:
+	// 		// EventSink changes
+	// 	}
+	// }
 }
 
 func (s *Server) iterateJobStatusMetrics(jobs *memdb.ResultIterator) {
