@@ -76,6 +76,22 @@ func NewWebhookSink(cfg *SinkCfg, broker *EventBroker, subReq *SubscribeRequest)
 	}, nil
 }
 
+func NewWebhookSinks(eventSink *structs.EventSink) (*WebhookSink, error) {
+	defConfig := defaultCfg()
+
+	if eventSink.Address == "" {
+		return nil, fmt.Errorf("invalid address for websink")
+	} else if _, err := url.Parse(eventSink.Address); err != nil {
+		return nil, fmt.Errorf("invalid address '%s' : %v", eventSink.Address, err)
+	}
+
+	httpClient := defConfig.HttpClient
+
+	return &WebhookSink{
+		client: httpClient,
+	}, nil
+}
+
 func (ws *WebhookSink) Start(ctx context.Context) {
 	defer ws.subscription.Unsubscribe()
 
@@ -93,7 +109,7 @@ func (ws *WebhookSink) Start(ctx context.Context) {
 			continue
 		}
 
-		if err := ws.send(&events); err != nil {
+		if err := ws.Send(ctx, &events); err != nil {
 			ws.l.Error("failed to sending event to webhook", "error", err)
 			continue
 		}
@@ -102,11 +118,12 @@ func (ws *WebhookSink) Start(ctx context.Context) {
 	}
 }
 
-func (ws *WebhookSink) send(e *structs.Events) error {
+func (ws *WebhookSink) Send(ctx context.Context, e *structs.Events) error {
 	req, err := ws.toRequest(e)
 	if err != nil {
 		return fmt.Errorf("converting event to request: %w", err)
 	}
+	req.WithContext(ctx)
 
 	err = ws.doRequest(req)
 	if err != nil {
